@@ -4,6 +4,8 @@
 #include <string.h>
 #include <stdbool.h>
 
+typedef unsigned long long ull;
+
 void find_min_max(){
     int n, max = INT_MIN, min = INT_MAX;
     scanf("%d", &n);
@@ -155,15 +157,6 @@ void *cbsearch(const void *key, const void *base, int num, int size, cmp_t cmp){
     return NULL;
 }
 
-void qsort_impl(int *arr, unsigned low, unsigned high) {
-    if (low >= high) return;
-    unsigned pi = partition(arr, low, high);
-    if (pi > low) qsort_impl(arr, low, pi - 1);
-    qsort_impl(arr, pi + 1, high);
-}
-  
-void qsort(int *arr, unsigned len) { qsort_impl(arr, 0u, len - 1); }
-
 unsigned partition(int *arr, unsigned low, unsigned high) {
     unsigned pivot = arr[low], left = low, right = high;
     while(true){
@@ -175,6 +168,15 @@ unsigned partition(int *arr, unsigned low, unsigned high) {
     template_swap(&arr[low],&arr[right],sizeof(int));
     return right;
 }
+
+void qsort_impl(int *arr, unsigned low, unsigned high) {
+    if (low >= high) return;
+    unsigned pi = partition(arr, low, high);
+    if (pi > low) qsort_impl(arr, low, pi - 1);
+    qsort_impl(arr, pi + 1, high);
+}
+  
+void quick_sort(int *arr, unsigned len) { qsort_impl(arr, 0u, len - 1); }
 
 // [l;m] , [m+1;r]
 void merge(int *arr, int l, int m, int r){
@@ -222,6 +224,107 @@ void merge_sort(int *arr, int n) {
 // void* const - можно менять данны, но нельзя менять указатель
 // const void* const - нельзя менять данные и нельзя менять указатель
 
-int main(){
+void multiplication_of_polynomials(){
+    int n,m,curr = 0;
+    scanf("%d %d",&n,&m);
+    int first[n], second[m], total[n+m-1];
+    memset(total,0,sizeof(total));
+    for(int i = 0; i < n; i++){scanf("%d",&first[i]);}
+    for(int i = 0; i < m; i++){scanf("%d",&second[i]);}
+
+    for(int i = 0; i < n; i++){
+        for(int j = 0; j < m; j++){
+            total[i+j] += (first[i]*second[j]);
+        }
+    }
+
+    int real_len = n+m-1;
+    while (real_len > 1 && total[real_len - 1] == 0) {
+        real_len--;
+    }
+
+    for(int i = 0; i < real_len; i++){
+        printf("%d",total[i]);
+        if(i < real_len){
+            printf(" ");
+        }
+    }
+}
+
+ull pow_of_two(ull n){
+    ull curr = 1;
+    while(curr < n){
+        curr *= 2;
+    }
+    return curr;
+}
+
+void karatsuba_helper(ull *a, ull *b, ull *c, int n) {
+    if (n <= 64) {
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                c[i + j] += a[i] * b[j];
+            }
+        }
+        return;
+    }
+    
+    int k = n / 2;
+    ull l[k], r[k];
+    ull t[2 * k];
+    memset(t, 0, sizeof(t));
+    
+    for (int i = 0; i < k; i++) {
+        l[i] = a[i] + a[k + i];
+        r[i] = b[i] + b[k + i];
+    }
+    karatsuba_helper(l, r, t, k);
+    karatsuba_helper(a, b, c, k);
+    karatsuba_helper(a + k, b + k, c + n, k);
+    ull *t1 = t, *t2 = t + k;
+    ull *s1 = c, *s2 = c + k, *s3 = c + 2 * k, *s4 = c + 3 * k;
+    for (int i = 0; i < k; i++) {
+        ull c1 = s2[i] + t1[i] - s1[i] - s3[i];
+        ull c2 = s3[i] + t2[i] - s2[i] - s4[i];
+        c[k + i] = c1;
+        c[n + i] = c2;
+    }
+}
+
+void karatsuba() {
+    ull n, m;
+    scanf("%llu %llu", &n, &m);
+    
+    ull size = pow_of_two((n > m) ? n : m);
+    ull first[size], second[size], total[2 * size];
+    
+    memset(first, 0, sizeof(first));
+    memset(second, 0, sizeof(second));
+    memset(total, 0, sizeof(total));
+    
+    for (ull i = 0; i < n; i++) {
+        scanf("%llu", &first[i]);
+    }
+    for (ull i = 0; i < m; i++) {
+        scanf("%llu", &second[i]);
+    }
+    
+    karatsuba_helper(first, second, total, size);
+    
+    ull real_len = n + m - 1;
+    while (real_len > 1 && total[real_len - 1] == 0) {
+        real_len--;
+    }
+    
+    for (ull i = 0; i < real_len; i++) {
+        printf("%llu", total[i]);
+        if (i < real_len - 1) {
+            printf(" ");
+        }
+    }
+}
+
+int main() {
+    karatsuba();
     return 0;
 }
