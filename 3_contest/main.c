@@ -3,6 +3,8 @@
 #include <limits.h>
 #include <string.h>
 #include <stdbool.h>
+#include <math.h>
+#include <stdint.h>
 
 typedef unsigned long long ull;
 
@@ -324,7 +326,290 @@ void karatsuba() {
     }
 }
 
+int majority_element(const int *parr, int len){
+    int count = 0, candidate = 0;
+    for(int i = 0; i < len; i++){
+        if(count == 0){
+            candidate = parr[i];
+            count++;
+        } else{
+            if(candidate == parr[i]){count++;} 
+            else{count--;}
+        }
+    }
+    count = 0;
+    for(int i = 0; i < len; i++){
+        if(parr[i] == candidate) count++;
+    }
+    if(count <= len/2) return -1;
+    return candidate;
+}
+
+typedef int (*xcmp_t)(void *lhs, int lsz, void *rhs, int rsz);
+
+typedef struct{
+    unsigned char* ptr;
+    int size;
+} Element;
+
+void generic_merge(Element* a, int left,int mid, int right, xcmp_t cmp){
+    int n = right-left;
+    Element* result = malloc(n*sizeof(Element));
+
+    int i = left, j = mid, k = 0;
+    while(i < mid && j < right){
+        if (cmp(a[i].ptr, a[i].size, a[j].ptr, a[j].size) <= 0){
+            result[k++] = a[i++];
+        } else {
+            result[k++] = a[j++];
+        }
+    }
+  
+    while(i < mid){
+        result[k++] = a[i++];
+    }
+  
+    while(j < right){
+        result[k++] = a[j++];
+    }
+  
+    for(i = left; i < right; i++){
+        a[i] = result[i-left];
+    }
+    free(result);
+}
+
+void generic_merge_sort(void* mem, int left, int right, xcmp_t cmp){
+    int mid = left+(right-left)/2;
+    if(left+1 >= right) return;
+    generic_merge_sort(mem,left,mid,cmp);
+    generic_merge_sort(mem,mid,right,cmp);
+    generic_merge(mem,left,mid,right,cmp);
+}
+
+// Здесь mem это начало памяти, sizes это массив размеров, nelts - число элементов
+// обобщёенная сортировка слиянием разных размеров
+void xmsort(void *mem, int *sizes, int nelts, xcmp_t cmp)
+{
+    Element *arr = malloc(nelts * sizeof(Element));
+
+    unsigned char *p = mem;
+    for (int i = 0; i < nelts; i++) {
+        arr[i].ptr  = p;
+        arr[i].size = sizes[i];
+        p += sizes[i];
+    }
+
+    generic_merge_sort(arr, 0, nelts, cmp);
+
+    int total_size = 0;
+    for (int i = 0; i < nelts; i++)
+        total_size += arr[i].size;
+
+    unsigned char *buffer = malloc(total_size);
+    unsigned char *dst = buffer;
+
+    for (int i = 0; i < nelts; i++) {
+        memcpy(dst, arr[i].ptr, arr[i].size);
+        arr[i].ptr = dst;
+        dst += arr[i].size;
+    }
+
+    memcpy(mem, buffer, total_size);
+
+    free(buffer);
+    free(arr);
+}
+
+void counting_sort(const int* parr, int n){
+    int* arr = malloc(100001*sizeof(int));
+    int the_biggest = 0;
+    for(int i = 0; i < n; i++){
+        if(parr[i] > the_biggest){the_biggest = parr[i];}
+        arr[parr[i]]++;
+    }
+    for(int i = 0; i <= the_biggest; i++){
+        printf("%d",arr[i]);
+        if(i < the_biggest){
+            printf(" ");
+        }
+    }
+    free(arr);
+}
+
+void radix(int* arr, int n, int exp){
+    int count[10];
+    int output[n];
+    memset(count,0,10*sizeof(int));
+    for(int i = 0;i < n; i++) count[(arr[i]/exp)%10]++;
+    for(int i = 1; i < 10; i++) count[i] += count[i-1];
+    for(int i = n-1; i >= 0; i--){
+        int idx = (arr[i]/exp)%10;
+        output[--count[idx]] = arr[i];
+    }
+    memcpy(arr,output,n*sizeof(int));
+    for(int i = 0; i < n; i++){
+        printf("%d",arr[i]);
+        if(i < n-1){printf(" ");}
+    }
+}
+
+/*void identity_matrix(unsigned A[N][N]){
+    memset(A, 0, sizeof(unsigned)*N*N);
+    for(int i = 0; i < N; i++){
+        A[i][i] = 1;
+    }
+}
+
+void matrix_multiply(unsigned res[N][N], unsigned a[N][N], unsigned b[N][N], unsigned m){
+    unsigned tmp[N][N];
+    for(int i = 0; i < N; i++){
+        for(int j = 0; j < N; j++){
+            __uint128_t sum = 0;
+            for(int k = 0; k < N; k++){
+                sum = (sum+(a[i][k]*b[k][j])%m)%m;
+            }
+            tmp[i][j] = (unsigned)(sum%m);
+        }
+    }
+
+    memcpy(res, tmp, sizeof(unsigned)*N*N);
+}
+
+void powNxN (unsigned (*A)[N], unsigned k, unsigned m){
+    unsigned result[N][N];
+    unsigned base[N][N];
+    identity_matrix(result);
+    memcpy(base,A,sizeof(unsigned)*N*N);
+    while(k > 0){
+        if(k%2 == 1){
+            matrix_multiply(result, result, base, m);
+        }
+        matrix_multiply(base, base, base, m);
+        k /= 2;
+    }
+
+    memcpy(A, result, sizeof(unsigned)*N*N);
+}*/
+
+void TimSort(void){
+    int N, K, X, runs = 0, pos = 0;
+    scanf("%d %d %d", &N, &K, &X);
+    int *cur = malloc(sizeof(int) * N);
+    int *tmp = malloc(sizeof(int) * N);
+    int *src = cur;
+    int *dst = tmp;
+    int *run_starts = malloc(sizeof(int) * (N));
+    int *run_lens   = malloc(sizeof(int) * (N));
+
+    long long total = (long long)N * K;
+    int *rec = malloc(sizeof(int) * total);
+
+    for(int i = 0; i < N; ++i){
+        for(int j = 0; j < K; ++j){
+            scanf("%d", &rec[i*K + j]);
+        }
+    }
+    
+    for(int i = 0; i < N; ++i) cur[i] = i;
+
+    #define KEY_BY_IDX(idx) (rec[(idx)*K + X])
+
+    while(pos < N){
+        int start = pos;
+        if(pos + 1 == N){
+            pos++;
+            run_starts[runs] = start;
+            run_lens[runs] = 1;
+            runs++;
+            break;
+        }
+        if(KEY_BY_IDX(cur[pos]) <= KEY_BY_IDX(cur[pos+1])){
+            pos++;
+            while(pos + 1 < N && KEY_BY_IDX(cur[pos]) <= KEY_BY_IDX(cur[pos+1])) pos++;
+            int len = pos - start + 1;
+            run_starts[runs] = start;
+            run_lens[runs] = len;
+            runs++;
+            pos++;
+        } else {
+            pos++;
+            while(pos + 1 < N && KEY_BY_IDX(cur[pos]) > KEY_BY_IDX(cur[pos+1])) pos++;
+            int end = pos;
+            int i = start, j = end;
+            while(i < j){
+                int t = cur[i]; cur[i] = cur[j]; cur[j] = t;
+                i++; j--;
+            }
+            int len = end - start + 1;
+            run_starts[runs] = start;
+            run_lens[runs] = len;
+            runs++;
+            pos++;
+        }
+    }
+
+    while(runs > 1){
+        int new_runs = 0;
+        int write_pos = 0;
+
+        for(int r = 0; r < runs; r += 2){
+            if(r + 1 >= runs){
+                int s = run_starts[r];
+                int len = run_lens[r];
+                for(int i = 0; i < len; ++i) dst[write_pos + i] = src[s + i];
+                run_starts[new_runs] = write_pos;
+                run_lens[new_runs] = len;
+                write_pos += len;
+                new_runs++;
+            } else {
+                int s1 = run_starts[r], l1 = run_lens[r];
+                int s2 = run_starts[r+1], l2 = run_lens[r+1];
+                int i1 = s1, i2 = s2;
+                int end1 = s1 + l1, end2 = s2 + l2;
+                int out = write_pos;
+                while(i1 < end1 && i2 < end2){
+                    int a = src[i1], b = src[i2];
+                    int ka = KEY_BY_IDX(a), kb = KEY_BY_IDX(b);
+                    if(ka <= kb){
+                        dst[out++] = a;
+                        i1++;
+                    } else {
+                        dst[out++] = b;
+                        i2++;
+                    }
+                }
+                while(i1 < end1) dst[out++] = src[i1++];
+                while(i2 < end2) dst[out++] = src[i2++];
+                run_starts[new_runs] = write_pos;
+                run_lens[new_runs] = l1 + l2;
+                write_pos += l1 + l2;
+                new_runs++;
+            }
+        }
+
+        int *tmp_ptr = src; 
+        src = dst; 
+        dst = tmp_ptr;
+        runs = new_runs;
+    }
+
+    for(int i = 0; i < N; ++i){
+        int idx = src[i];
+        int field_index = i % N;
+        if(field_index >= K) field_index %= K;
+        int val = rec[idx*K + field_index];
+        if(i) putchar(' ');
+        printf("%d", val);
+    }
+    putchar('\n');
+
+    free(rec);
+    free(cur); free(tmp);
+    free(run_starts); free(run_lens);
+}
+
 int main() {
-    karatsuba();
+    TimSort();
     return 0;
 }
